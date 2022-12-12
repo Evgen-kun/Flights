@@ -82,6 +82,8 @@
                         id="btn" name="btn" v-on:click="foo()">Запрос</v-btn>
                         </v-col>
                     </v-row>
+                        <comp-progress :show="showProgress"></comp-progress>
+
                         <comp-flight 
                             v-for="flight in flights" 
                             v-bind:flight="flight"

@@ -77,7 +77,7 @@ var flightComponent = Vue.component('comp-flight', {
                             <div v-show="!item.flight">
                                 <div class="font-weight-normal">
                                     <div >Время прибытия: {{ new Date(item.ad).toLocaleString() }}</div>
-                                    <strong>{{ findAirport(item.aa) }}</strong>
+                                    <strong>{{ findAirport(item.aa) }}</strong><br/>
                                     <strong>{{ timeOfRest(item.t) }}</strong>
                                     <div >Время взлёта: {{ new Date(item.dd).toLocaleString() }}</div>
                                 </div>
@@ -160,6 +160,16 @@ var errorComponent = Vue.component('comp-error', {
     },
 });
 
+var progressComponent = Vue.component('comp-progress', {
+    props: {
+        show: Boolean,
+    },
+    template:
+	`<v-container d-flex justify-center v-if="show">
+        <v-progress-circular color="indigo darken-2" indeterminate :size="128"></v-progress-circular>
+    </v-container>`,
+});
+
 var vm = new Vue({
     el: '#app',
 	vuetify: new Vuetify({
@@ -183,6 +193,7 @@ var vm = new Vue({
         date: `${new Date().getFullYear()}-${new Date().getUTCMonth() + 1}-${new Date().getDate()}`,
 		dateFormatted: "",
 		menuDate: false,
+        showProgress: false,
     },
     methods: {
 		allowedDates: val => new Date(val) >= Date.parse(`${new Date().getFullYear()}-${new Date().getUTCMonth() + 1}-${new Date().getDate()}`)/**/,
@@ -237,6 +248,7 @@ var vm = new Vue({
 		},
         async foo() {
             this.error = "";
+            this.showProgress = true;
             var res = await this.getIATA();
             if(this.checkIATA(res)) {
                 this.setIATA(res);
@@ -244,6 +256,7 @@ var vm = new Vue({
                 if(this.checkSID(res))
                     this.setFlights(res);
             }
+            this.showProgress = false;
         },
     },
     computed: {
