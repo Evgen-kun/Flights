@@ -40,6 +40,8 @@ export async function queryToTravelAdvisor(res) {
     if(res.search_params.sid == null) return "No sid";
 
     let response = await fetch(`https://travel-advisor.p.rapidapi.com/flights/poll?sid=${res.search_params.sid}&so=PRICE&currency=RUB&n=15&ns=NON_STOP%2CONE_STOP&o=0`, options);
+    console.log(response);
+    if(response.status == 503) return "503";
     let json = await response.json();
 
     return json;

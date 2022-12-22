@@ -1,4 +1,6 @@
 import { getIATA, initQueryToTravelAdvisor, queryToTravelAdvisor } from './api.js'
+import { flightsCount, dbSelect, minPrice } from './functions.js';
+import { dbInsert } from './db.js';
 
 var flightComponent = Vue.component('comp-flight', {
     data: function() {
@@ -14,37 +16,27 @@ var flightComponent = Vue.component('comp-flight', {
     },
     template:
 	`<v-card class="mt-4" elevation="6" shaped outlined :key="flightKey" >
-		<!-- <v-img src="https://cdn.vuetifyjs.com/images/cards/sunshine.jpg" height="200px" ></v-img> -->
-
 		<v-card-title>{{ flight.l[0].pr.dp }}</v-card-title>
-
         <div v-if="flight.f[0].l.length > 1">
             <v-card-subtitle >FROM {{ findAirport(flight.f[0].l[0].da) }} on {{ new Date(flight.f[0].l[0].dd).toLocaleTimeString() }}</v-card-subtitle>
             <v-card-subtitle>TO {{ findAirport(flight.f[0].l[flight.f[0].l.length - 1].aa) }} on {{ new Date(flight.f[0].l[flight.f[0].l.length - 1].ad).toLocaleTimeString() }}</v-card-subtitle>
         </div>
-
         <div v-if="flight.f[0].l.length == 1">
             <v-card-subtitle >FROM {{ findAirport(flight.f[0].l[0].da) }} on {{ new Date(flight.f[0].l[0].dd).toLocaleTimeString() }}</v-card-subtitle>
             <v-card-subtitle>TO {{ findAirport(flight.f[0].l[0].aa) }} on {{ new Date(flight.f[0].l[0].ad).toLocaleTimeString() }}</v-card-subtitle>
         </div>
-
 		<v-card-actions>
 			<v-btn color="orange lighten-2" @click="show = !show" text >Подробнее</v-btn>
-
 			<v-spacer></v-spacer>
-
 			<v-btn color="green lighten-2" text >Купить билет</v-btn>
 		</v-card-actions>
-
 		<v-expand-transition>
 			<div v-show="show">
 				<v-divider></v-divider>
-
                 <v-card-text>
                     <div class="font-weight-bold ml-8 mb-2">
                         Полёт
                     </div>
-
                     <v-timeline align-top dense >
                         <v-timeline-item v-show="getFlights_rest(flight.f[0].l, flight.f[0].lo).length == 1"
                             :key="getFlights_rest(flight.f[0].l, flight.f[0].lo)[0].id"
@@ -194,6 +186,9 @@ var vm = new Vue({
 		dateFormatted: "",
 		menuDate: false,
         showProgress: false,
+        flights_count: 0,
+        cheapest: 0,
+        query_count: 0,
     },
     methods: {
 		allowedDates: val => new Date(val) >= Date.parse(`${new Date().getFullYear()}-${new Date().getUTCMonth() + 1}-${new Date().getDate()}`)/**/,
@@ -226,6 +221,13 @@ var vm = new Vue({
             }
             return true;
         },
+        checkResponse(res) {
+            if(res == "503") {
+                this.error = "Сервис недоступен (503), повторите попытку позже";
+                return false;
+            }
+            return true;
+        },
 		async getIATA() {
             let json = await getIATA(this.textFrom, this.textTo);
             return json;
@@ -246,15 +248,31 @@ var vm = new Vue({
 			console.log(this.flights);
             console.log(this.airports);
 		},
+        async insertToDB() {
+            await dbInsert(this.textFrom, this.textTo, this.iataFrom, this.iataTo, this.date, this.countOfFlights);
+        },
+        async selectDB() {
+            await dbSelect().then(response => { this.query_count = response });
+            //console.log(query_count);
+        },
         async foo() {
             this.error = "";
+            this.flights_count = 0;
+            this.cheapest = 0;
             this.showProgress = true;
             var res = await this.getIATA();
             if(this.checkIATA(res)) {
                 this.setIATA(res);
                 res = await this.getFlights();
-                if(this.checkSID(res))
-                    this.setFlights(res);
+                if(this.checkSID(res)) {
+                    if(this.checkResponse(res)) {
+                        this.setFlights(res);
+                        await flightsCount(this.flights).then(response => { this.flights_count = response });
+                        await minPrice(this.flights).then(response => { this.cheapest = response });
+                        await this.insertToDB();
+                        this.selectDB();
+                    }
+                }
             }
             this.showProgress = false;
         },
@@ -272,6 +290,9 @@ var vm = new Vue({
         getTextTo() {
             return this.textTo;
         },
+        countOfFlights() {
+            return this.flights.length;
+        },
     },
 	watch: {
 		date(val) {
@@ -283,5 +304,8 @@ var vm = new Vue({
 	},
 	onCreate() {
 		this.dateFormatted = setDateFormatted();
-	}
+	},
+    mounted() {
+        this.selectDB();
+    },
 });

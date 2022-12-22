@@ -1,0 +1,9 @@
+CREATE TABLE flights (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    city_from TEXT,
+    city_to TEXT,
+    iata_from TEXT,
+    iata_to TEXT,
+    date_departure TEXT,
+    options_count INTEGER
+);
